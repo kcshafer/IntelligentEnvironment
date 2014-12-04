@@ -10,6 +10,8 @@ class SObject(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String(250), nullable=False)
+    amount = Column(Integer, nullable=True)
+    record_types = relationship('RecordType', backref='sobject')
 
 class Relationship(Base):
     __tablename__ = 'relationship'
@@ -33,7 +35,13 @@ class Owner(Base):
     __tablename__ = 'owner'
 
     id = Column(Integer, primary_key=True)
-    name = Column(String(250), nullable=False)
+    is_active = Column(Integer, nullable=False)
     sf_id = Column(String(18), nullable=False)
+
+class SObjectOwner(Base):
+    __tablename__ = 'sobject_owner'
+
+    id = Column(Integer, primary_key=True)
     sobject_id = Column(Integer, ForeignKey('sobject.id'))
+    owner_id = Column(Integer, ForeignKey('owner.id'))
     amount = Column(Integer)

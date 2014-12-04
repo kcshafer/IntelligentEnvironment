@@ -55,5 +55,34 @@ class SalesforceClient(object):
         response = requests.get(url, headers=headers)
 
         content = json.loads(response.content)
-
+        print content
         return content.get('records')
+
+    def count(self, obj):
+        query = "SELECT count() FROM %s" % (obj)
+        url = '%s/services/data/v%s/query/?q=%s' % (self.instance_url, self.api, query)
+        headers = {'Authorization' : 'Bearer ' + self.token}
+        response = requests.get(url, headers=headers)
+
+        content = json.loads(response.content)
+        print content
+        return content.get('totalSize')
+
+    def count_group(self, obj, group_by):
+        query = "SELECT count(id) amt, %s id FROM %s GROUP BY %s" % (group_by, obj, group_by)
+        url = '%s/services/data/v%s/query/?q=%s' % (self.instance_url, self.api, query)
+        headers = {'Authorization' : 'Bearer ' + self.token}
+        response = requests.get(url, headers=headers)
+
+        content = json.loads(response.content)
+        print content
+        response = {}
+        for ar in content.get('records'):
+            if group_by=='RecordTypeId':
+                group_name = 'None' if ar.get('id') is not None else ar.get('id')
+            else:
+                group_name = ar.get('id')
+            response[group_name] = ar.get('amt')
+
+        print response
+        return response
