@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Integer, String
+from sqlalchemy import Column, ForeignKey, Integer, String, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy import create_engine
@@ -11,7 +11,10 @@ class SObject(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(250), nullable=False)
     amount = Column(Integer, nullable=True)
+    fields = Column(Text, nullable=True)
     record_types = relationship('RecordType', backref='sobject')
+    children = relationship('Relationship', backref='parent', foreign_keys="[Relationship.child_id]")
+    parents = relationship('Relationship', backref='child', foreign_keys="[Relationship.parent_id]")
 
 class Relationship(Base):
     __tablename__ = 'relationship'
