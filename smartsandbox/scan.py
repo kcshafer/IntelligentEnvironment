@@ -29,6 +29,13 @@ def retrieve_source_schema(engine):
                 child = engine.config_session.query(SObject).filter(SObject.name==cr.get('childSObject')).first()
                 rel = Relationship(name=cr.get('relationshipName'), parent_id=sobj.id, child_id=child.id, field=cr.get('field'))
                 engine.config_session.add(rel)
+        fields = ''
+        for field in dsobj.get('fields'):
+            fields = fields + field.get('name') + ', '
+
+        fields = fields[:-2]
+        sobj.fields = fields
+        engine.config_session.add(sobj)
 
     engine.config_session.commit()
 
