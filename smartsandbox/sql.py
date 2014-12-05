@@ -12,3 +12,20 @@ add_foreign_key = '''
     ADD COLUMN %s VARCHAR(18)
     REFERENCES  %s(id); 
 '''
+
+bottom_relationship_join = '''
+SELECT sobject.id, sobject.name
+FROM sobject
+WHERE NOT EXISTS (
+    SELECT 1 FROM relationship
+    WHERE relationship.parent_id = sobject.id AND relationship.parent_id <> relationship.child_id
+);
+'''
+
+next_level_join = '''
+select sobject.name, sobject.id
+from relationship
+inner join sobject
+    on relationship.parent_id = sobject.id
+where relationship.child_id = %s and relationship.child_id <> relationship.parent_id; 
+'''

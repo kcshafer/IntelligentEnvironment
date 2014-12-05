@@ -12,6 +12,7 @@ class SObject(Base):
     name = Column(String(250), nullable=False)
     amount = Column(Integer, nullable=True)
     fields = Column(Text, nullable=True)
+    extract_order = Column(Integer, ForeignKey('extract_order.id'), nullable=True)
     record_types = relationship('RecordType', backref='sobject')
     children = relationship('Relationship', backref='parent', foreign_keys="[Relationship.child_id]")
     parents = relationship('Relationship', backref='child', foreign_keys="[Relationship.parent_id]")
@@ -25,6 +26,12 @@ class Relationship(Base):
     child_id = Column(Integer, ForeignKey('sobject.id'))
     master_detail = Column(String(1), default=0, nullable=False) #really should be boolean
     field = Column(String(250), nullable=False)
+
+class ExtractOrder(Base):
+    __tablename__ = 'extract_order'
+
+    id = Column(Integer, primary_key=True)
+    position = Column(Integer, nullable=False)
 
 class RecordType(Base):
     __tablename__ = 'recordtype'

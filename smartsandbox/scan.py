@@ -1,5 +1,6 @@
-from smartsandbox.models import Base, SObject, Relationship, RecordType, Owner, SObjectOwner
+from smartsandbox.models import Base, SObject, Relationship, RecordType, Owner, SObjectOwner, ExtractOrder
 from smartsandbox.refs import METADATA_OBJECTS, TEMPORARILY_UNSUPPORTED, EXCLUDE_RECORD_TYPES, EXCLUDE_OWNER
+from smartsandbox.sql import bottom_relationship_join, next_level_join
 
 db = 'postgresql://localhost/smart_sandbox'
 
@@ -75,6 +76,58 @@ def analyze_record_distribution(engine):
                 engine.config_session.add(sobject_owner)
 
     engine.config_session.commit()
+
+def plan_extraction_order(engine):
+    objs = {'0': []}
+    res = engine.config_session.execute(bottom_relationship_join).fetchall()
+    relationships = []
+    for r in res:
+        relationships.append(dict(zip(r.keys(), r)))
+
+    child_ids = []
+    sobjects = []
+    for sobj in engine.config_session.query(SObject).all():
+        sobjects.append(sobj.name)
+
+    print sobjects
+    eo = ExtractOrder(position=0)
+    engine.config_session.add(eo)
+    engine.config_session.commit()
+    for rel in relationships:
+        sobjects.remove(rel.get('name'))
+        objs.get('0').append(rel.get('name'))
+        child_ids.append(rel.get('id'))
+        sobj = engine.config_session.query(SObject).filter(SObject.id==rel.get('id')).first()
+        sobj.extract_order = eo.id
+        engine.config_session.add(sobj)
+    engine.config_session.commit()
+
+    counter = 1
+    while len(sobjects) != 0 and counter != 10:
+        eo = ExtractOrder(position=counter)
+        engine.config_session.add(eo)
+        engine.config_session.commit()
+        child_ids_temp = []
+        objs[counter] = []
+        for cid in child_ids:
+            query = next_level_join % cid
+            res = engine.config_session.execute(query).fetchall()
+            crelationships = []
+            for r in res:
+                crelationships.append(dict(zip(r.keys(), r)))
+            for crel in crelationships:
+                if crel.get('name') in sobjects:
+                    objs.get(counter).append(crel.get('name'))
+                    child_ids_temp.append(crel.get('id'))
+                    print "Assigning %s to %s" % (crel.get('name'), counter)
+                    sobj = engine.config_session.query(SObject).filter(SObject.id==crel.get('id')).first()
+                    sobj.extract_order = eo.id
+                    sobjects.remove(crel.get('name'))
+        engine.config_session.commit()
+        child_ids = child_ids_temp
+        counter = counter + 1
+
+    print objs
 
 
 
