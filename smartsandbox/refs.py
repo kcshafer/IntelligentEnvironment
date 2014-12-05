@@ -1,3 +1,8 @@
+PSQL_RESERVED_WORDS = [
+    'Case',
+    'Order'
+]
+
 TEMPORARILY_UNSUPPORTED = [
     'IdeaComment',
     'Campaign'
@@ -56,10 +61,18 @@ EXCLUDE_OWNER = [
 ]
 
 METADATA_OBJECTS = [
+    'CombinedAttachment',
+    'NoteAndAttachment',
+    'OpenActivity',
+    'CaseTeamRole',
+    'ProcessInstanceHistory',
+    'EmailStatus',
     'AccountCleanInfo',
     'AccountFeed',
     'AccountShare',
     'AccountHistory',
+    'ActivityHistory',
+    'AttachedContentDocument',
     'AdditionalNumber',
     'ApexClass',
     'ApexComponent',

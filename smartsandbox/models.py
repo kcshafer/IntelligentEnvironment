@@ -18,7 +18,8 @@ class Relationship(Base):
 
     id = Column(Integer, primary_key=True)
     name = Column(String(250), nullable=False)
-    sobject_id = Column(Integer, ForeignKey('sobject.id'))
+    parent_id = Column(Integer, ForeignKey('sobject.id'))
+    child_id = Column(Integer, ForeignKey('sobject.id'))
     master_detail = Column(String(1), default=0, nullable=False) #really should be boolean
     field = Column(String(250), nullable=False)
 

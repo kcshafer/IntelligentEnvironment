@@ -1,88 +1,47 @@
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import Table, Column, Integer, Unicode, MetaData, create_engine
+from sqlalchemy.orm import mapper, create_session
 
-from smartsandbox.api.client import SalesforceClient
-from smartsandbox.models import Base, SObject, Relationship, RecordType, Owner, SObjectOwner
-from smartsandbox.refs import METADATA_OBJECTS, TEMPORARILY_UNSUPPORTED, EXCLUDE_RECORD_TYPES, EXCLUDE_OWNER
+from smartsandbox.models import SObject, Relationship
+from smartsandbox.refs import PSQL_RESERVED_WORDS
+from smartsandbox.sql import relationship_sobject_join, add_foreign_key
 
-db = 'postgresql://localhost/smart_sandbox'
+def extract_source_schema(engine):
+    print "***************Extracting all tables*********************"
+    for sobj in engine.config_session.query(SObject).all():
+        #TODO: handle this earlier in the scan so that we store in the config database the translation
+        tablename = sobj.name + '2' if sobj.name in PSQL_RESERVED_WORDS else sobj.name
+        create_statement = 'CREATE TABLE %s (Id VARCHAR(18) PRIMARY KEY, ' % tablename
+        dsobj = engine.source_client.sobject_describe(sobj.name)
+        for field in dsobj.get('fields'):
+            if field.get('name') == 'Id':
+                pass
+            elif field.get('type') == 'reference':
+                pass
+            elif field.get('type') == 'textarea':
+                create_statement = create_statement + '%s TEXT, ' % field.get('name')
+            else:
+                create_statement = create_statement + '%s VARCHAR(255), ' % field.get('name')
 
-class Scanner(object):
-    def __init__(self):
-        engine = create_engine(db)
-        Base.metadata.bind = engine
-        DBSession = sessionmaker(bind=engine)
+        create_statement = create_statement[:-2] + ')'
+        engine.data_session.execute(create_statement)
 
-        self.session = DBSession()
-        self.client = SalesforceClient('kc@analyticscloud.com', 'Rubygem14')
+    engine.data_session.commit()
 
-    def retrieve_source_schema(self):
-        sobjects = self.client.get_sobjects()
+    print "*****************Building Table Relationships********************"
+    res = engine.config_session.execute(relationship_sobject_join).fetchall()
+    relationships = []
+    for r in res:
+        relationships.append(dict(zip(r.keys(), r)))
 
-        print "**************Extracting SF Tables***************"
+    #TODO: better ways to handle ambigous column names, probably at a higher level so it can be used throughout the program. Perhaps doing the modification earlier, in the program
+    for rel in relationships:
+        child_name = rel.get('child_name') + '2' if rel.get('child_name') in PSQL_RESERVED_WORDS else rel.get('child_name')
+        parent_name = rel.get('parent_name') + '2' if rel.get('parent_name') in PSQL_RESERVED_WORDS else rel.get('parent_name')
+        field = rel.get('field') + '_' + rel.get('parent_name') if rel.get('field') in ('WhatId', 'WhoId', 'ParentId', 'RelationId')  else rel.get('field')
+        print field
+        print parent_name
+        print child_name
+        alter_statement = add_foreign_key % (child_name, field, parent_name)
+        engine.data_session.execute(alter_statement)
 
-        for sobj in sobjects:
-            if sobj.get('queryable') and sobj.get('name') not in METADATA_OBJECTS and sobj.get('name') not in TEMPORARILY_UNSUPPORTED:
-                s = SObject(name=sobj.get('name'))
-                self.session.add(s)
-        
-        self.session.commit()
-
-        print "******************Extracting relationship and record type data *****************"
-        for sobj in self.session.query(SObject).all():
-            dsobj = self.client.sobject_describe(sobj.name)
-            #TODO: find a better way to deal with record types, objects that don't support record types and objects with only one
-            if sobj.name not in EXCLUDE_RECORD_TYPES:
-                for rt in dsobj.get('recordTypeInfos'):
-                    rt = RecordType(name=rt.get('name'), sf_id=rt.get('recordTypeId'), sobject_id=sobj.id)
-                    self.session.add(rt)
-            for cr in dsobj.get('childRelationships'):
-                if cr.get('relationshipName'):
-                    rel = Relationship(name=cr.get('relationshipName'), sobject_id=sobj.id, field=cr.get('field'))
-                    self.session.add(rel)
-
-        self.session.commit()
-
-        print "******************Extracting user information***********************"
-        for user in self.client.query('SELECT Id, isActive FROM User'):
-            owner = Owner(is_active=(1 if user.get('IsActive') else 0), sf_id=user.get('Id'))
-            self.session.add(owner)
-
-        self.session.commit()
-
-    def analyze_record_distribution(self):
-        print "*****************Counting record totals********************"
-        for sobj in self.session.query(SObject).all():
-            sobj.amount = self.client.count(sobj.name)
-            self.session.add(sobj)
-            #TODO: find a better way to deal with record types, objects that don't support record types and objects with only one
-            if sobj.name not in EXCLUDE_RECORD_TYPES:
-                if len(sobj.record_types) == 1:
-                    rt = sobj.record_types[0]
-                    rt.amount = sobj.amount
-                    self.session.add(rt)
-                else:
-                    rt_count = self.client.count_group(sobj.name, 'RecordTypeId')
-                    for rt in sobj.record_types:
-                        rt.amount = rt_count.get(rt.name)
-                        self.session.add(rt)
-            if sobj.name not in EXCLUDE_OWNER:
-                owner_count = self.client.count_group(sobj.name, 'OwnerId')
-                for id, amt in owner_count.iteritems():
-                    owner = self.session.query(Owner).filter(Owner.sf_id==id).first()
-                    print 'owner'
-                    print sobj.name
-                    print owner
-                    print id
-                    print amt
-                    sobject_owner = SObjectOwner(sobject_id=sobj.id, owner_id=owner.id, amount=amt)
-                    self.session.add(sobject_owner)
-
-        self.session.commit()
-
-
-
-
-
-
-
+    engine.data_session.commit()
