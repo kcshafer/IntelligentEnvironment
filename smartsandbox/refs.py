@@ -8,6 +8,13 @@ TEMPORARILY_UNSUPPORTED = [
     'Campaign'
 ]
 
+AMBIGOUS_RELATIONSHIPS = [
+    'WhatId',
+    'WhoId',
+    'RelationId',
+    'RelatedObjectId'
+]
+
 EXCLUDE_RECORD_TYPES = [
     'Asset',
     'Attachment',

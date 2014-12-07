@@ -29,3 +29,17 @@ inner join sobject
     on relationship.parent_id = sobject.id
 where relationship.child_id = %s and relationship.child_id <> relationship.parent_id; 
 '''
+
+has_owners_join = '''
+SELECT sobject.name
+FROM sobject
+WHERE EXISTS (
+    SELECT 1 FROM sobject_owner
+);
+'''
+
+insert = '''
+INSERT INTO %s
+(%s)
+VALUES %s
+'''
