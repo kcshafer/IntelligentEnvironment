@@ -12,7 +12,7 @@ class SObject(Base):
     name = Column(String(250), nullable=False)
     amount = Column(Integer, nullable=True)
     fields = Column(Text, nullable=True)
-    extract_order = Column(Integer, ForeignKey('extract_order.id'), nullable=True)
+    extract_order_id = Column(Integer, ForeignKey('extract_order.id'), nullable=True)
     record_types = relationship('RecordType', backref='sobject')
     children = relationship('Relationship', backref='parent', foreign_keys="[Relationship.child_id]")
     parents = relationship('Relationship', backref='child', foreign_keys="[Relationship.parent_id]")

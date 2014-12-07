@@ -61,6 +61,9 @@ EXCLUDE_OWNER = [
 ]
 
 METADATA_OBJECTS = [
+    'GoogleDoc',
+    'FeedLike',
+    'FeedTrackedChange',
     'CombinedAttachment',
     'NoteAndAttachment',
     'OpenActivity',

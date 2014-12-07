@@ -12,6 +12,7 @@ def retrieve_source_schema(engine):
 
     for sobj in sobjects:
         if sobj.get('queryable') and sobj.get('name') not in METADATA_OBJECTS and sobj.get('name') not in TEMPORARILY_UNSUPPORTED:
+            print 'Extracting %s' % sobj.get('name')
             s = SObject(name=sobj.get('name'))
             engine.config_session.add(s)
     
@@ -19,6 +20,7 @@ def retrieve_source_schema(engine):
 
     print "******************Extracting relationship and record type data *****************"
     for sobj in engine.config_session.query(SObject).all():
+        print "Extracting record types and relationships for %s" % sobj.name
         dsobj = engine.source_client.sobject_describe(sobj.name)
         #TODO: find a better way to deal with record types, objects that don't support record types and objects with only one
         if sobj.name not in EXCLUDE_RECORD_TYPES:
@@ -26,10 +28,13 @@ def retrieve_source_schema(engine):
                 rt = RecordType(name=rt.get('name'), sf_id=rt.get('recordTypeId'), sobject_id=sobj.id)
                 engine.config_session.add(rt)
         for cr in dsobj.get('childRelationships'):
-            if cr.get('relationshipName') and cr.get('childSObject') not in METADATA_OBJECTS and cr.get('childSObject') not in TEMPORARILY_UNSUPPORTED:
-                child = engine.config_session.query(SObject).filter(SObject.name==cr.get('childSObject')).first()
-                rel = Relationship(name=cr.get('relationshipName'), parent_id=sobj.id, child_id=child.id, field=cr.get('field'))
-                engine.config_session.add(rel)
+            if cr.get('relationshipName') and cr.get('childSObject') not in METADATA_OBJECTS and cr.get('childSObject') not in TEMPORARILY_UNSUPPORTED and cr.get('childSObject') != 'CombinedAttachment':
+                try:
+                    child = engine.config_session.query(SObject).filter(SObject.name==cr.get('childSObject')).first()
+                    rel = Relationship(name=cr.get('relationshipName'), parent_id=sobj.id, child_id=child.id, field=cr.get('field'))
+                    engine.config_session.add(rel)
+                except:
+                    print "Relationships with %s are not supported" % cr.get('childSObject')
         fields = ''
         for field in dsobj.get('fields'):
             fields = fields + field.get('name') + ', '
@@ -41,7 +46,8 @@ def retrieve_source_schema(engine):
     engine.config_session.commit()
 
     print "******************Extracting user information***********************"
-    for user in engine.source_client.query('SELECT Id, isActive FROM User'):
+    for user in engine.source_client.query('SELECT Id,Username, isActive FROM User'):
+        print "Extracting %s" % user.get('Username')
         owner = Owner(is_active=(1 if user.get('IsActive') else 0), sf_id=user.get('Id'))
         engine.config_session.add(owner)
 
@@ -50,33 +56,37 @@ def retrieve_source_schema(engine):
 def analyze_record_distribution(engine):
     print "*****************Counting record totals********************"
     for sobj in engine.config_session.query(SObject).all():
+        print "Counting RecordTypes and Owner totals for %s" % sobj.name
         sobj.amount = engine.source_client.count(sobj.name)
         engine.config_session.add(sobj)
         #TODO: find a better way to deal with record types, objects that don't support record types and objects with only one
         if sobj.name not in EXCLUDE_RECORD_TYPES:
-            if len(sobj.record_types) == 1:
-                rt = sobj.record_types[0]
-                rt.amount = sobj.amount
-                engine.config_session.add(rt)
-            else:
-                rt_count = engine.source_client.count_group(sobj.name, 'RecordTypeId')
-                for rt in sobj.record_types:
-                    rt.amount = rt_count.get(rt.name)
+            try:
+                if len(sobj.record_types) == 1:
+                    rt = sobj.record_types[0]
+                    rt.amount = sobj.amount
                     engine.config_session.add(rt)
+                else:
+                    rt_count = engine.source_client.count_group(sobj.name, 'RecordTypeId')
+                    for rt in sobj.record_types:
+                        rt.amount = rt_count.get(rt.name)
+                        engine.config_session.add(rt)
+            except:
+                print "%s does not have a RecordTypeId field." % sobj.name
         if sobj.name not in EXCLUDE_OWNER:
-            owner_count = engine.source_client.count_group(sobj.name, 'OwnerId')
-            for id, amt in owner_count.iteritems():
-                owner = engine.config_session.query(Owner).filter(Owner.sf_id==id).first()
-                print 'owner'
-                print sobj.name
-                print owner
-                print id
-                print amt
-                sobject_owner = SObjectOwner(sobject_id=sobj.id, owner_id=owner.id, amount=amt)
-                engine.config_session.add(sobject_owner)
+            try:
+                owner_count = engine.source_client.count_group(sobj.name, 'OwnerId')
+                for id, amt in owner_count.iteritems():
+                    if id[:3] != '00G':
+                        owner = engine.config_session.query(Owner).filter(Owner.sf_id==id).first()
+                        sobject_owner = SObjectOwner(sobject_id=sobj.id, owner_id=owner.id, amount=amt)
+                        engine.config_session.add(sobject_owner)
+            except:
+                print "%s does not have an OwnerId field." % sobj.name
 
     engine.config_session.commit()
 
+#TODO: This doesn't handle self relationships yet becuase of issues with recursion, and this logic lives in the sql queries in sql.py
 def plan_extraction_order(engine):
     objs = {'0': []}
     res = engine.config_session.execute(bottom_relationship_join).fetchall()
@@ -89,16 +99,16 @@ def plan_extraction_order(engine):
     for sobj in engine.config_session.query(SObject).all():
         sobjects.append(sobj.name)
 
-    print sobjects
     eo = ExtractOrder(position=0)
     engine.config_session.add(eo)
     engine.config_session.commit()
     for rel in relationships:
+        print "Assigning %s to %s" % (rel.get('name'), 0)
         sobjects.remove(rel.get('name'))
         objs.get('0').append(rel.get('name'))
         child_ids.append(rel.get('id'))
         sobj = engine.config_session.query(SObject).filter(SObject.id==rel.get('id')).first()
-        sobj.extract_order = eo.id
+        sobj.extract_order_id = eo.id
         engine.config_session.add(sobj)
     engine.config_session.commit()
 
@@ -121,17 +131,10 @@ def plan_extraction_order(engine):
                     child_ids_temp.append(crel.get('id'))
                     print "Assigning %s to %s" % (crel.get('name'), counter)
                     sobj = engine.config_session.query(SObject).filter(SObject.id==crel.get('id')).first()
-                    sobj.extract_order = eo.id
+                    sobj.extract_order_id = eo.id
                     sobjects.remove(crel.get('name'))
         engine.config_session.commit()
         child_ids = child_ids_temp
         counter = counter + 1
 
     print objs
-
-
-
-
-
-
-

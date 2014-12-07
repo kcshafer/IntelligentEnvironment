@@ -8,6 +8,7 @@ from smartsandbox.sql import relationship_sobject_join, add_foreign_key
 def extract_source_schema(engine):
     print "***************Extracting all tables*********************"
     for sobj in engine.config_session.query(SObject).all():
+        print "Creating table %s" % sobj.name 
         #TODO: handle this earlier in the scan so that we store in the config database the translation
         tablename = sobj.name + '2' if sobj.name in PSQL_RESERVED_WORDS else sobj.name
         create_statement = 'CREATE TABLE %s (Id VARCHAR(18) PRIMARY KEY, ' % tablename
@@ -35,9 +36,11 @@ def extract_source_schema(engine):
 
     #TODO: better ways to handle ambigous column names, probably at a higher level so it can be used throughout the program. Perhaps doing the modification earlier, in the program
     for rel in relationships:
+        print "Creating relationship %s for CHILD: %s and PARENT: %s" % (rel.get('field'), rel.get('child_name'), rel.get('parent_name'))
         child_name = rel.get('child_name') + '2' if rel.get('child_name') in PSQL_RESERVED_WORDS else rel.get('child_name')
         parent_name = rel.get('parent_name') + '2' if rel.get('parent_name') in PSQL_RESERVED_WORDS else rel.get('parent_name')
-        field = rel.get('field') + '_' + rel.get('parent_name') if rel.get('field') in ('WhatId', 'WhoId', 'ParentId', 'RelationId')  else rel.get('field')
+        #TODO: add ambigous foreign key columns in SF to refs module
+        field = rel.get('field') + '_' + rel.get('parent_name') if rel.get('field') in ('WhatId', 'WhoId', 'ParentId', 'RelationId', 'RelatedObjectId')  else rel.get('field')
         print field
         print parent_name
         print child_name
