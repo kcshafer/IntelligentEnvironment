@@ -6,3 +6,6 @@ def fix_psql_names(name):
 
 def array_to_soql_string(arr):
     return '(\'' + '\', \''.join(arr) + '\')'
+
+def salesforce_datetime_format(dt):
+    return dt.strftime("%Y-%m-%dT%H:%m:%SZ")
