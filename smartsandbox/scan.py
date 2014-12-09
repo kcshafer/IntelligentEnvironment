@@ -12,9 +12,11 @@ def retrieve_source_schema(engine):
 
     for sobj in sobjects:
         if sobj.get('queryable') and sobj.get('name') not in METADATA_OBJECTS and sobj.get('name') not in TEMPORARILY_UNSUPPORTED:
-            print 'Extracting %s' % sobj.get('name')
-            s = SObject(name=sobj.get('name'))
-            engine.config_session.add(s)
+            sobj_amount = engine.source_client.count(sobj.get('name'))
+            if sobj_amount > 0:
+                print 'Extracting %s' % sobj.get('name')
+                s = SObject(name=sobj.get('name'), amount=sobj_amount)
+                engine.config_session.add(s)
     
     engine.config_session.commit()
 
@@ -57,9 +59,6 @@ def analyze_record_distribution(engine):
     print "*****************Counting record totals********************"
     for sobj in engine.config_session.query(SObject).all():
         print "Counting RecordTypes and Owner totals for %s" % sobj.name
-        #TODO:if this was done in the retrieve schema, and then all the 0 amount rows were dropped this could save a lot of time
-        sobj.amount = engine.source_client.count(sobj.name)
-        engine.config_session.add(sobj)
         #TODO: find a better way to deal with record types, objects that don't support record types and objects with only one
         if sobj.name not in EXCLUDE_RECORD_TYPES:
             try:
@@ -86,8 +85,7 @@ def analyze_record_distribution(engine):
                 print "%s does not have an OwnerId field." % sobj.name
 
     engine.config_session.commit()
-def clean_database(engine):
-    engine.config_session.execute('DELETE FROM SObject WHERE amount=0')
+
 #TODO: This doesn't handle self relationships yet becuase of issues with recursion, and this logic lives in the sql queries in sql.py
 def plan_extraction_order(engine):
     objs = {'0': []}

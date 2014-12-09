@@ -43,3 +43,12 @@ INSERT INTO %s
 (%s)
 VALUES %s
 '''
+
+
+relationship_to_parent_join = '''
+SELECT relationship.field, sobject.name
+FROM relationship
+INNER JOIN sobject
+ON relationship.parent_id = sobject.id
+WHERE relationship.child_id = %s
+'''

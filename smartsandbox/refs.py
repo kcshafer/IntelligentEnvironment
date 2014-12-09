@@ -4,8 +4,10 @@ PSQL_RESERVED_WORDS = [
 ]
 
 TEMPORARILY_UNSUPPORTED = [
-    'IdeaComment',
-    'Campaign'
+    'IdeaComment', #because it doesn't support complex group queries
+    'Campaign', #because of an early issue I can't remember
+    'AcceptedEventRelation', #because it's driving me crazy
+    'Attachment', #because of some encoding issue I can't figure out right now
 ]
 
 AMBIGOUS_RELATIONSHIPS = [
