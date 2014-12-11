@@ -12,7 +12,7 @@ def extract_source_schema(engine):
         print "Creating table %s" % sobj.name 
         #TODO: handle this earlier in the scan so that we store in the config database the translation
         tablename = fix_psql_names(sobj.name)
-        create_statement = 'CREATE TABLE %s (Id VARCHAR(18) PRIMARY KEY, ' % tablename
+        create_statement = 'CREATE TABLE %s (Id VARCHAR(18) PRIMARY KEY, insert_row BOOLEAN, inserted BOOLEAN, ' % tablename
         dsobj = engine.source_client.sobject_describe(sobj.name)
         for field in dsobj.get('fields'):
             if field.get('name') == 'Id':

@@ -2,6 +2,7 @@ from smartsandbox.models import Base, SObject, Relationship, RecordType, Owner, 
 from smartsandbox.refs import METADATA_OBJECTS, TEMPORARILY_UNSUPPORTED, EXCLUDE_RECORD_TYPES, EXCLUDE_OWNER
 from smartsandbox.sql import bottom_relationship_join, next_level_join
 
+from sqlalchemy import func
 db = 'postgresql://localhost/smart_sandbox'
 
 
@@ -13,6 +14,8 @@ def retrieve_source_schema(engine):
     for sobj in sobjects:
         if sobj.get('queryable') and sobj.get('name') not in METADATA_OBJECTS and sobj.get('name') not in TEMPORARILY_UNSUPPORTED:
             sobj_amount = engine.source_client.count(sobj.get('name'))
+            #TODO: this would need to be retrieved or somehow set
+            sobj.amount_requested = 
             if sobj_amount > 0:
                 print 'Extracting %s' % sobj.get('name')
                 s = SObject(name=sobj.get('name'), amount=sobj_amount)
@@ -57,6 +60,9 @@ def retrieve_source_schema(engine):
 
 def analyze_record_distribution(engine):
     print "*****************Counting record totals********************"
+    total_records = engine.config_session.query(func.sum(SObject.amount))
+    #TODO: the total amount needed would need to make it's way here for the point of entry
+    sample_ratio = 10000 / total_records
     for sobj in engine.config_session.query(SObject).all():
         print "Counting RecordTypes and Owner totals for %s" % sobj.name
         #TODO: find a better way to deal with record types, objects that don't support record types and objects with only one
@@ -70,23 +76,28 @@ def analyze_record_distribution(engine):
                     rt_count = engine.source_client.count_group(sobj.name, 'RecordTypeId')
                     for rt in sobj.record_types:
                         rt.amount = rt_count.get(rt.name)
-                        engine.config_session.add(rt)
+                        rt.amount_requested = rt_count.get(rt.name)
+                        engine.config_session.add(rt) * sample_ratio
             except:
                 print "%s does not have a RecordTypeId field." % sobj.name
         if sobj.name not in EXCLUDE_OWNER:
             try:
                 owner_count = engine.source_client.count_group(sobj.name, 'OwnerId')
                 for id, amt in owner_count.iteritems():
+                    #TODO: if possible, find better way of excluding queues
                     if id[:3] != '00G':
                         owner = engine.config_session.query(Owner).filter(Owner.sf_id==id).first()
-                        sobject_owner = SObjectOwner(sobject_id=sobj.id, owner_id=owner.id, amount=amt)
+                        sobject_owner = SObjectOwner(sobject_id=sobj.id, owner_id=owner.id, amount=amt, amount_requested=(amt * sample_ratio))
                         engine.config_session.add(sobject_owner)
             except:
                 print "%s does not have an OwnerId field." % sobj.name
 
+            sobj.amount_requested = sobj.amount * sample_ratio
+
     engine.config_session.commit()
 
 #TODO: This doesn't handle self relationships yet becuase of issues with recursion, and this logic lives in the sql queries in sql.py
+#TODO: this should implement a tree data structure and 
 def plan_extraction_order(engine):
     objs = {'0': []}
     res = engine.config_session.execute(bottom_relationship_join).fetchall()
@@ -113,6 +124,7 @@ def plan_extraction_order(engine):
     engine.config_session.commit()
 
     counter = 1
+    #TODO: this limits to 10 levels, not sure if it does anything anymore but it needs to go
     while len(sobjects) != 0 and counter != 10:
         eo = ExtractOrder(position=counter)
         engine.config_session.add(eo)

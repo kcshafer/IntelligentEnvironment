@@ -11,6 +11,7 @@ class SObject(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(250), nullable=False)
     amount = Column(Integer, nullable=True)
+    #amount_requested(Integer, nullable=True)
     fields = Column(Text, nullable=True)
     extract_order_id = Column(Integer, ForeignKey('extract_order.id'), nullable=True)
     record_types = relationship('RecordType', backref='sobject')
@@ -44,6 +45,7 @@ class RecordType(Base):
     sf_id = Column(String(18), nullable=False)
     sobject_id = Column(Integer, ForeignKey('sobject.id', ondelete='CASCADE'))
     amount = Column(Integer)
+    #amount_requested = Column(Integer)
 
 class Owner(Base):
     __tablename__ = 'owner'
@@ -51,6 +53,8 @@ class Owner(Base):
     id = Column(Integer, primary_key=True)
     is_active = Column(Integer, nullable=False)
     sf_id = Column(String(18), nullable=False)
+    #amount = Column(Integer)
+    #amount_requested = Column(Integer)
 
 class SObjectOwner(Base):
     __tablename__ = 'sobject_owner'
