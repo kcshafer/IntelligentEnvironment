@@ -17,6 +17,29 @@ AMBIGOUS_RELATIONSHIPS = [
     'RelatedObjectId'
 ]
 
+SYSTEM_FIELDS = [
+    'lastreferenceddate',
+    'lastactivitydate',
+    'systemmodstamp',
+    'createdbyid',
+    'lastmodifiedbyid',
+    'lastmodifieddate',
+    'isdeleted',
+    'createddate',
+    'lastvieweddate',
+    'billinglatitude',#TODO:remove the latitide and longitude
+    'billinglongitude',
+    'shippinglongitude',
+    'shippinglatitude',
+    'shippingstreet',#TODO: handle the streets multiline i.e cut out the bottom lines
+    'billingstreet',
+    'billingaddress',
+    'shippingaddress',
+    'id',
+    'photourl',
+    'type',
+]
+
 EXCLUDE_RECORD_TYPES = [
     'Asset',
     'Attachment',
