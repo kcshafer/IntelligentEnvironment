@@ -52,3 +52,14 @@ INNER JOIN sobject
 ON relationship.parent_id = sobject.id
 WHERE relationship.child_id = %s
 '''
+
+child_relationship_join = '''
+SELECT sobject.id, child.name, relationship.field 
+FROM sobject 
+INNER JOIN relationship 
+    ON relationship.parent_id = sobject.id 
+INNER JOIN sobject 
+    AS child 
+    ON relationship.child_id = child.id
+WHERE sobject.name = '%s'
+'''

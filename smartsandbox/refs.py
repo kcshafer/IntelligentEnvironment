@@ -38,6 +38,7 @@ SYSTEM_FIELDS = [
     'id',
     'photourl',
     'type',
+    'old_id',
 ]
 
 EXCLUDE_RECORD_TYPES = [
