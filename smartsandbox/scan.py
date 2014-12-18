@@ -1,5 +1,5 @@
-from smartsandbox.models import Base, SObject, Relationship, RecordType, Owner, SObjectOwner, ExtractOrder
-from smartsandbox.refs import METADATA_OBJECTS, TEMPORARILY_UNSUPPORTED, EXCLUDE_RECORD_TYPES, EXCLUDE_OWNER
+from smartsandbox.models import Base, SObject, Relationship, RecordType, Owner, SObjectOwner, ExtractOrder, Field
+from smartsandbox.refs import METADATA_OBJECTS, TEMPORARILY_UNSUPPORTED, EXCLUDE_RECORD_TYPES, EXCLUDE_OWNER, FIELD_TYPE_MAPPING
 from smartsandbox.sql import bottom_relationship_join, next_level_join
 
 from sqlalchemy import func
@@ -15,7 +15,6 @@ def retrieve_source_schema(engine):
         if sobj.get('queryable') and sobj.get('name') not in METADATA_OBJECTS and sobj.get('name') not in TEMPORARILY_UNSUPPORTED:
             sobj_amount = engine.source_client.count(sobj.get('name'))
             #TODO: this would need to be retrieved or somehow set
-            sobj.amount_requested = 
             if sobj_amount > 0:
                 print 'Extracting %s' % sobj.get('name')
                 s = SObject(name=sobj.get('name'), amount=sobj_amount)
@@ -40,10 +39,13 @@ def retrieve_source_schema(engine):
                     engine.config_session.add(rel)
                 except:
                     print "Relationships with %s are not supported" % cr.get('childSObject')
-        fields = ''
+        fields = 'Id, '
         for field in dsobj.get('fields'):
-            fields = fields + field.get('name') + ', '
-
+            if field.get('type') in FIELD_TYPE_MAPPING.keys():
+                fields = fields + field.get('name') + ', '
+                fld = Field(name=field.get('name'), type=field.get('type'), sobject_id=sobj.id)
+                engine.config_session.add(fld)
+                
         fields = fields[:-2]
         sobj.fields = fields
         engine.config_session.add(sobj)

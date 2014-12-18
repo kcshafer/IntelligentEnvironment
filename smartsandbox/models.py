@@ -21,6 +21,14 @@ class SObject(Base):
     def build_query(self):
         return 'SELECT %s FROM %s' % (self.fields, self.name)
 
+class Field(Base):
+    __tablename__ = 'field'
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String(250), nullable=False)
+    type = Column(String(80), nullable=False)
+    sobject_id = Column(Integer, ForeignKey('sobject.id'))
+
 class Relationship(Base):
     __tablename__ = 'relationship'
 
