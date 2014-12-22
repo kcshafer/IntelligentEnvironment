@@ -11,7 +11,7 @@ def load(engine):
 
 #load the slices of each of the table in batches
 def load_table_slice(engine):
-    accounts = engine.data_session.execute('select * from account limit 2')
+    accounts = engine.data_session.execute('select * from account limit 10')
     keys = accounts.keys()
     accounts = accounts.fetchall()
     result = engine.source_client.insert('Account', accounts, keys)
@@ -19,8 +19,8 @@ def load_table_slice(engine):
     new_ids = []
     for account in accounts:
         old_ids.append(account.id)
-    for r in result.xpath('soapenv:Body/urn:createResponse/urn:result/urn:id', namespaces=NS):
-        new_ids.append(r.text)
+    for r in result:
+        new_ids.append(r.id)
 
     print old_ids
     print new_ids
