@@ -159,6 +159,7 @@ class SalesforceClient(object):
                     sobj[k] = v
             sobjects.append(sobj)
 
+        print sobjects
         response = self._suds_client.service.create(sobjects)
-
+        print response
         return response

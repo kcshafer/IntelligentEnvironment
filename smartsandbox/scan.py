@@ -41,7 +41,7 @@ def retrieve_source_schema(engine):
                     print "Relationships with %s are not supported" % cr.get('childSObject')
         fields = 'Id, '
         for field in dsobj.get('fields'):
-            if field.get('type') in FIELD_TYPE_MAPPING.keys():
+            if field.get('type') in FIELD_TYPE_MAPPING.keys() and field.get('createable'):
                 fields = fields + field.get('name') + ', '
                 fld = Field(name=field.get('name'), type=field.get('type'), sobject_id=sobj.id)
                 engine.config_session.add(fld)
@@ -62,7 +62,7 @@ def retrieve_source_schema(engine):
 
 def analyze_record_distribution(engine):
     print "*****************Counting record totals********************"
-    total_records = engine.config_session.query(func.sum(SObject.amount))
+    total_records = engine.config_session.query(func.sum(SObject.amount)).first()[0]
     #TODO: the total amount needed would need to make it's way here for the point of entry
     sample_ratio = 10000 / total_records
     for sobj in engine.config_session.query(SObject).all():

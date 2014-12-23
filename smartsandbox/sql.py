@@ -63,3 +63,19 @@ INNER JOIN sobject
     ON relationship.child_id = child.id
 WHERE sobject.name = '%s'
 '''
+
+fields_sobject_join = '''
+SELECT sobject.name AS sobject_name, field.name AS field_name
+FROM field
+INNER JOIN sobject
+    ON field.sobject_id = sobject.id
+WHERE field.type IN ('currency', 'double', 'integer', 'percent')
+'''
+
+load_sobject_order = '''
+SELECT sobject.name,sobject.amount, extract_order.position
+FROM sobject
+INNER JOIN extract_order
+    ON sobject.extract_order_id = extract_order.id
+ORDER BY extract_order.position desc
+'''
